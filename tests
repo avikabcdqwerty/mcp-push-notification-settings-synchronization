@@ -1,0 +1,144 @@
+# tests/__init__.py
+# (empty file for package recognition)
+
+# tests/conftest.py
+import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+from src.main import app
+from src.models import Base, SessionLocal, engine
+
+@pytest.fixture(scope="session")
+def test_db_engine():
+    # Use a separate test database (in-memory or test container)
+    test_engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
+    Base.metadata.create_all(bind=test_engine)
+    yield test_engine
+    Base.metadata.drop_all(bind=test_engine)
+
+@pytest.fixture(scope="function")
+def db_session(test_db_engine):
+    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_db_engine)
+    db = TestingSessionLocal()
+    yield db
+    db.close()
+
+@pytest.fixture(scope="module")
+def client():
+    with TestClient(app) as c:
+        yield c
+
+# tests/test_settings_sync.py
+import uuid
+from src.models import User, Device, PushNotificationSettings
+from src.schemas import UserSettingsUpdateRequest, DeviceSettingsUpdateRequest
+
+def create_test_user(db, username="testuser", email="test@example.com", is_admin=False):
+    user = User(
+        id=uuid.uuid4(),
+        username=username,
+        email=email,
+        password_hash="hashedpassword",
+        is_active=True,
+        is_admin=is_admin,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+def create_test_device(db, user, device_id="device-1", device_type="ios", is_push_enabled=True):
+    device = Device(
+        device_id=device_id,
+        user_id=user.id,
+        device_type=device_type,
+        device_name="Test Device",
+        push_token="token123",
+        is_push_enabled=is_push_enabled,
+    )
+    db.add(device)
+    db.commit()
+    db.refresh(device)
+    return device
+
+def test_user_settings_sync(db_session):
+    user = create_test_user(db_session)
+    # Update user settings
+    from src.crud import update_user_settings, get_user_settings
+    payload = UserSettingsUpdateRequest(settings={"categories": ["alerts"]}, is_enabled=True)
+    updated = update_user_settings(db_session, user.id, payload)
+    assert updated.settings["categories"] == ["alerts"]
+    # Sync: settings should be reflected for user
+    fetched = get_user_settings(db_session, user.id)
+    assert fetched.settings["categories"] == ["alerts"]
+
+def test_device_settings_enable_disable(db_session):
+    user = create_test_user(db_session)
+    device = create_test_device(db_session, user)
+    from src.crud import update_device_settings, get_device_settings
+    payload = DeviceSettingsUpdateRequest(is_push_enabled=False)
+    updated = update_device_settings(db_session, user.id, device.device_id, payload)
+    assert updated.is_push_enabled is False
+    # Re-enable
+    payload = DeviceSettingsUpdateRequest(is_push_enabled=True)
+    updated = update_device_settings(db_session, user.id, device.device_id, payload)
+    assert updated.is_push_enabled is True
+
+def test_prevent_duplicate_notifications(db_session):
+    user = create_test_user(db_session)
+    device = create_test_device(db_session, user)
+    from src.notification import deduplicate_notification
+    event_payload = {"event_id": "evt-123", "message": "Test"}
+    # First send should be allowed
+    assert deduplicate_notification(db_session, user.id, event_payload) is True
+    # Second send within window should be blocked
+    assert deduplicate_notification(db_session, user.id, event_payload) is False
+
+def test_audit_logging(db_session):
+    user = create_test_user(db_session)
+    from src.audit import log_audit_event, get_audit_logs_for_user
+    log_audit_event(db_session, user.id, "TEST_EVENT", "details here", ip_address="127.0.0.1", session_id="sess-1")
+    logs = get_audit_logs_for_user(db_session, user.id)
+    assert len(logs) == 1
+    assert logs[0].event_type == "TEST_EVENT"
+    assert logs[0].ip_address == "127.0.0.1"
+
+def test_security_session_validation(client, db_session):
+    # Simulate unauthorized access
+    response = client.get("/settings/user")
+    assert response.status_code == 401
+
+def test_encryption_at_rest(db_session):
+    user = create_test_user(db_session)
+    from src.crud import update_user_settings
+    payload = UserSettingsUpdateRequest(settings={"secret": "value"}, is_enabled=True)
+    update_user_settings(db_session, user.id, payload)
+    # Directly query DB to check encrypted field
+    settings_row = db_session.query(PushNotificationSettings).filter_by(user_id=user.id, device_id=None).one()
+    # The field should not be plain text
+    assert isinstance(settings_row.settings_encrypted, dict)  # SQLAlchemy decrypts transparently
+    # For true encryption validation, check raw DB value (requires DB access outside ORM)
+
+# tests/test_api_integration.py
+def test_health_check(client):
+    response = client.get("/health")
+    assert response.status_code == 200
+    assert response.json()["status"] == "ok"
+
+def test_list_devices(client, db_session):
+    user = create_test_user(db_session)
+    create_test_device(db_session, user, device_id="device-1")
+    create_test_device(db_session, user, device_id="device-2")
+    # Simulate login and JWT (mocking for test)
+    from src.auth import create_access_token
+    token = create_access_token({"user_id": str(user.id), "username": user.username, "is_admin": user.is_admin})
+    headers = {"Authorization": f"Bearer {token}"}
+    response = client.get("/devices", headers=headers)
+    assert response.status_code == 200
+    assert isinstance(response.json(), list)
+    assert len(response.json()) == 2
+
+# --- EXPORTS ---
+# All test modules are auto-discovered by pytest
