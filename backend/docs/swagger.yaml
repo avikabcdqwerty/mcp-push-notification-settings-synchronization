@@ -1,0 +1,223 @@
+openapi: 3.0.3
+info:
+  title: MCP Push Notification Settings API
+  description: API for managing and synchronizing push notification settings across multiple devices.
+  version: 1.0.0
+  contact:
+    name: MCP Engineering Team
+    email: support@mcp.com
+servers:
+  - url: http://localhost:4000/api
+    description: Local development server
+tags:
+  - name: NotificationSettings
+    description: Push notification settings management
+paths:
+  /notification-settings:
+    get:
+      tags:
+        - NotificationSettings
+      summary: Get all notification settings for the authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of notification settings per device
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DeviceSettings'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /notification-settings/{deviceId}:
+    get:
+      tags:
+        - NotificationSettings
+      summary: Get notification settings for a specific device
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Device notification settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceSettings'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Device not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags:
+        - NotificationSettings
+      summary: Update notification settings for a specific device
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateDeviceSettings'
+      responses:
+        '200':
+          description: Updated device settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceSettings'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /notification-settings/{deviceId}/disable:
+    post:
+      tags:
+        - NotificationSettings
+      summary: Disable push notifications for a specific device
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Device notifications disabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceSettings'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Device not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /notification-settings/sync:
+    post:
+      tags:
+        - NotificationSettings
+      summary: Synchronize notification settings across all devices
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SyncSettingsRequest'
+      responses:
+        '200':
+          description: Synchronized settings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DeviceSettings'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    DeviceSettings:
+      type: object
+      properties:
+        deviceId:
+          type: string
+          example: device-123
+        enabled:
+          type: boolean
+          example: true
+        preferences:
+          type: object
+          additionalProperties: true
+          example:
+            sound: true
+            vibration: false
+        updatedAt:
+          type: string
+          format: date-time
+          example: '2024-06-01T12:34:56Z'
+    UpdateDeviceSettings:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+          example: true
+        preferences:
+          type: object
+          additionalProperties: true
+          example:
+            sound: true
+            vibration: false
+    SyncSettingsRequest:
+      type: object
+      properties:
+        settings:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/UpdateDeviceSettings'
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          example: Unauthorized: Invalid or expired session.

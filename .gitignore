@@ -1,106 +1,104 @@
-# Node.js & TypeScript
+# Node.js / TypeScript / Express / React
 node_modules/
 dist/
 build/
+coverage/
+.env
+.env.*
+.env.local
+.env.development
+.env.test
+.env.production
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# TypeScript
 *.tsbuildinfo
 
 # Logs
 logs/
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
 
-# Environment variables
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+# Jest
+jest-coverage/
+coverage/
+*.lcov
 
 # Database
 *.sqlite
 *.sqlite3
 *.db
 *.db-journal
+*.pgsql
+*.psql
+*.pgdata
 pgdata/
-postgres-data/
-data/
-tmp/
-*.pid
+pg_dump.sql
+
+# TypeORM
+ormconfig.json
+ormconfig.js
+ormconfig.ts
+ormconfig.yml
+ormconfig.env
+typeorm.log
 
 # Redis
 dump.rdb
-*.rdb
+appendonly.aof
+redis-data/
+redis.conf
 
-# TypeORM
-ormconfig.js
-ormconfig.json
-ormconfig.yml
-ormconfig.env
+# OpenSSL
+*.pem
+*.key
+*.crt
+*.csr
+*.der
+*.pfx
 
-# Jest
-coverage/
-jest-test-results.json
+# Swagger generated files
+swagger-output.json
 
-# ESLint & Prettier
+# ESLint/Prettier
 .eslintcache
-.prettiercache
 
-# Docker
-docker-compose.override.yml
-docker-compose.dev.yml
-docker-compose.prod.yml
-Dockerfile.local
-Dockerfile.dev
-Dockerfile.prod
-
-# OpenAPI
-openapi.json
-openapi.yaml
-swagger.json
-swagger.yaml
-
-# Passport.js
-passport-session/
-
-# Misc
+# OS / IDE files
 .DS_Store
 Thumbs.db
-
-# Frontend (React)
-frontend/node_modules/
-frontend/build/
-frontend/dist/
-frontend/.env
-frontend/.eslintcache
-frontend/.prettiercache
-
-# Backend
-backend/node_modules/
-backend/build/
-backend/dist/
-backend/.env
-backend/.eslintcache
-backend/.prettiercache
-
-# IDE/editor files
-.vscode/
 .idea/
+.vscode/
 *.sublime-workspace
 *.sublime-project
 
-# Test output
-*.test.ts.snap
-*.spec.ts.snap
+# React build
+frontend/build/
+frontend/node_modules/
+frontend/.env
+frontend/.env.*
+frontend/.eslintcache
 
-# Temporary files
-*.tmp
-*.temp
-*.bak
+# Backend build
+backend/build/
+backend/dist/
+backend/node_modules/
+backend/.env
+backend/.env.*
+backend/.eslintcache
+
+# Misc
 *.swp
 *.swo
+*.bak
+*.tmp
+*.temp
+*.orig
 
-# Yarn
-.yarn/
-.pnp.*
+# Test output
+backend/tests/output/
+frontend/tests/output/
